@@ -8,7 +8,7 @@ export default function Pagina_Inicial() {
 
   useEffect(() => {
     const timeout = setTimeout(() => {
-      router.replace("/SearchScreen");
+      router.replace("/searchscreen");
     }, 3000);
     return () => clearTimeout(timeout);
   }, []);

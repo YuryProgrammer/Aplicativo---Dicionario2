@@ -1,14 +1,29 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, Image, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TextInput, Image, TouchableOpacity, Alert } from 'react-native';
+import { useRouter } from 'expo-router';
 
 export default function Home() {
   const [idioma, setIdioma] = useState('');
   const [palavra, setPalavra] = useState('');
+  const router = useRouter();
 
-  const handlePesquisar = () => {
-    // Aqui você pode colocar lógica de busca, navegação, etc
-    console.log(`Idioma: ${idioma} | Palavra: ${palavra}`);
-  };
+const handlePesquisar = () => {
+  if (palavra.trim() === '') {
+    Alert.alert('Aviso', 'Digite uma palavra.');
+    return;
+  }
+
+  const idiomaFormatado = idioma.trim() === '' ? 'pt-BR' : idioma.trim();
+
+  router.push({
+    pathname: '/resultado',
+    params: {
+      idioma: idiomaFormatado,
+      palavra: palavra.trim(),
+    },
+  });
+};
+
 
   return (
     <View style={styles.container}>
@@ -26,7 +41,8 @@ export default function Home() {
           style={styles.input}
           value={idioma}
           onChangeText={setIdioma}
-          placeholder="Ex: Português"
+          placeholder="Ex: pt-BR"
+          autoCapitalize="none"
         />
         <Image source={require('../assets/Lupa.png')} style={styles.icon} />
       </View>
@@ -48,6 +64,7 @@ export default function Home() {
     </View>
   );
 }
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
