@@ -2,28 +2,40 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { buscarPalavra } from '../services/api';
+import { adicionarAoHistorico } from '../services/historico';
+
+interface Resultado {
+  significado: string;
+  sinonimo: string;
+  frase: string;
+}
 
 export default function Resultado() {
   const router = useRouter();
-  const { idioma = 'pt-BR', palavra = '' } = useLocalSearchParams();
+  const { palavra } = useLocalSearchParams();
 
-  const [dados, setDados] = useState<{ significado: string; sinonimo: string; frase: string } | null>(null);
+  const [dados, setDados] = useState<Resultado | null>(null);
   const [erro, setErro] = useState<string | null>(null);
 
   useEffect(() => {
     async function carregarDados() {
+      if (typeof palavra !== 'string' || palavra.trim() === '') {
+        setErro('Palavra inválida.');
+        return;
+      }
+
       try {
-        const resultado = await buscarPalavra(idioma, palavra);
+        const resultado = await buscarPalavra(palavra);
         setDados(resultado);
+
+        await adicionarAoHistorico(palavra.trim(), 'pt-BR');
       } catch (err) {
         setErro('Erro ao buscar dados');
       }
     }
 
-    if (palavra) {
-      carregarDados();
-    }
-  }, [idioma, palavra]);
+    carregarDados();
+  }, [palavra]);
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
