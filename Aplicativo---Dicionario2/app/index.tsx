@@ -1,13 +1,15 @@
-import React from 'react';
-import { useEffect } from "react";
-import { View, Text, StyleSheet, Image } from "react-native";
+import React, { useEffect, useState } from "react";
+import { View, Text, StyleSheet, Image, Dimensions } from "react-native";
 import { useRouter } from "expo-router";
+import Loarder from "../components/loader";
 
 export default function Pagina_Inicial() {
   const router = useRouter();
+  const [exibirLoader, setExibirLoader] = useState(true);
 
   useEffect(() => {
     const timeout = setTimeout(() => {
+      setExibirLoader(false);
       router.replace("/searchscreen");
     }, 3000);
     return () => clearTimeout(timeout);
@@ -17,9 +19,17 @@ export default function Pagina_Inicial() {
     <View style={styles.container}>
       <Text style={styles.title}>Meu{'\n'}Amigo{'\n'}Disci</Text>
 
-      <View style={styles.box}>
-        <Image source={require("../assets/Logo.png")} style={styles.image} resizeMode="contain" />
-      </View>
+      <Image
+        source={require("../assets/Logo.png")}
+        style={styles.image}
+        resizeMode="contain"
+      />
+
+      {exibirLoader && (
+        <View style={styles.loaderContainer}>
+          <Loarder />
+        </View>
+      )}
 
       <View style={styles.credits}>
         <Text style={styles.creditsTitle}>Desenvolvido Por:</Text>
@@ -34,11 +44,37 @@ export default function Pagina_Inicial() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: "center", alignItems: "center", padding: 20 },
-  title: { fontSize: 32, fontFamily: "serif", textAlign: "center", marginBottom: 20 },
-  box: { padding: 20, marginBottom: 20 },
-  image: { width: 120, height: 120 },
-  credits: { alignItems: "center", marginTop: 10 },
-  creditsTitle: { fontWeight: "bold", marginBottom: 4 },
-  creditName: { fontSize: 14 }
+  container: {
+    flex: 1,
+    backgroundColor: "#fff",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 20,
+  },
+  title: {
+    fontSize: 32,
+    fontFamily: "serif",
+    textAlign: "center",
+    marginBottom: 20,
+  },
+  image: {
+    width: 120,
+    height: 120,
+    marginBottom: 30,
+  },
+  loaderContainer: {
+    marginBottom: 40,
+  },
+  credits: {
+    position: "absolute",
+    bottom: 20,
+    alignItems: "center",
+  },
+  creditsTitle: {
+    fontWeight: "bold",
+    marginBottom: 4,
+  },
+  creditName: {
+    fontSize: 14,
+  },
 });

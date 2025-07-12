@@ -1,39 +1,52 @@
-// services/api.ts
-import axios from 'axios';
+const BASE_URL = 'https://api.dictionaryapi.dev/api/v2/entries';
+const BASE_URL_PT = 'https://significado.herokuapp.com/v2'; // Dicionário Aberto
+const BASE_URL_SINONIMOS = 'https://api.dicionario-aberto.net/entry'; // ainda não utilizado
 
-export async function buscarPalavra(palavra: string): Promise<{
-  significado: string;
-  sinonimo: string;
-  frase: string;
-}> {
+const idiomasSuportados = ['en', 'es', 'fr', 'de', 'it']; // Idiomas que a DictionaryAPI suporta
+
+export async function buscarPalavra(palavra: string, idioma: string = 'en') {
   try {
-    const dictRes = await axios.get(
-      `https://api.dictionaryapi.dev/api/v2/entries/en/${palavra}`
-    );
+    if (idioma === 'pt-BR') {
+      const response = await fetch(`${BASE_URL_PT}/${palavra}`);
 
-    const data = dictRes.data;
+      if (!response.ok) throw new Error(`Erro: ${response.status}`);
 
-    const definicao = data[0]?.meanings?.[0]?.definitions?.[0];
-    const significado = definicao?.definition || 'Não encontrado.';
-    const frase = definicao?.example || 'Não disponível.';
+      const data = await response.json();
 
-    // Busca sinônimos na Datamuse
-    const sinonimoRes = await axios.get(
-      `https://api.datamuse.com/words?rel_syn=${palavra}`
-    );
-    const sinonimos = sinonimoRes.data.map((s: any) => s.word).join(', ') || 'Não disponível.';
+      const significado = data[0]?.meanings?.join('\n') || 'Sem definição encontrada.';
+      const sinonimo = 'Sinônimos não disponíveis para português.';
+      const frase = 'Exemplo de frase não disponível para português.';
 
-    return {
-      significado,
-      sinonimo: sinonimos,
-      frase,
-    };
+      return { significado, sinonimo, frase };
+    }
+
+    if (!idiomasSuportados.includes(idioma)) {
+      throw new Error(`Idioma "${idioma}" ainda não é suportado pela API.`);
+    }
+
+    const response = await fetch(`${BASE_URL}/${idioma}/${palavra}`);
+
+    if (!response.ok) {
+      const text = await response.text();
+      console.warn('Resposta inesperada:', text);
+      throw new Error('Erro ao buscar na API');
+    }
+
+    const data = await response.json();
+
+    if (!Array.isArray(data)) {
+      throw new Error('Nenhum resultado encontrado');
+    }
+
+    const entry = data[0];
+    const meanings = entry.meanings || [];
+    const significado = meanings[0]?.definitions[0]?.definition || 'Sem definição encontrada.';
+    const sinonimo = meanings[0]?.synonyms?.slice(0, 5).join(', ') || 'Sem sinônimos disponíveis.';
+    const frase = meanings[0]?.definitions[0]?.example || 'Sem exemplo disponível.';
+
+    return { significado, sinonimo, frase };
   } catch (error) {
-    console.error('Erro ao buscar a palavra:', error);
-    return {
-      significado: 'Erro ao buscar a palavra.',
-      sinonimo: 'Não disponível.',
-      frase: 'Não disponível.',
-    };
+    console.error('Erro ao buscar palavra:', error);
+    throw error;
   }
 }

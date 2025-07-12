@@ -1,99 +1,119 @@
-// app/historico.tsx
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, Image, Alert } from 'react-native';
-import { useRouter } from 'expo-router';
-import { obterHistorico, limparHistorico } from '../services/historico';
+import React, { useCallback, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Image,
+  SafeAreaView,
+  StatusBar,
+  Platform,
+  Alert,
+} from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect, useRouter } from 'expo-router';
 
-export default function Historico() {
-  const [historico, setHistorico] = useState([]);
-  const router = useRouter();
-
-  useEffect(() => {
-    carregar();
-  }, []);
-
-  const carregar = async () => {
-    const lista = await obterHistorico();
-    setHistorico(lista);
-  };
-
-  const handleLimpar = async () => {
-    Alert.alert('Confirmação', 'Deseja apagar todo o histórico?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Apagar',
-        style: 'destructive',
-        onPress: async () => {
-          await limparHistorico();
-          setHistorico([]);
-        },
-      },
-    ]);
-  };
-
-  type HistoricoItem = {
+interface PalavraHistorico {
   palavra: string;
   idioma: string;
-  data: string;
-};
+}
 
-const renderItem = ({ item }: { item: HistoricoItem }) => (
+export default function Historico() {
+  const [historico, setHistorico] = useState<PalavraHistorico[]>([]);
+  const router = useRouter();
 
-    <TouchableOpacity
-      style={styles.item}
-      onPress={() =>
-        router.push({
-          pathname: '/resultado',
-          params: {
-            palavra: item.palavra,
-            idioma: item.idioma,
-          },
-        })
+  useFocusEffect(
+    useCallback(() => {
+      async function carregarHistorico() {
+        const historicoStr = await AsyncStorage.getItem('historico');
+        const historicoDados = historicoStr ? JSON.parse(historicoStr) : [];
+        setHistorico([...historicoDados].reverse());
       }
-    >
-      <Text style={styles.palavra}>{item.palavra}</Text>
-      <Text style={styles.idioma}>Idioma: {item.idioma}</Text>
-    </TouchableOpacity>
+
+      carregarHistorico();
+    }, [])
   );
 
+  const handleSelecionarPalavra = (palavra: string, idioma: string) => {
+    router.push({
+      pathname: '/resultado',
+      params: { palavra, idioma },
+    });
+  };
+
+  const limparHistorico = () => {
+    Alert.alert(
+      'Limpar Histórico',
+      'Tem certeza de que deseja apagar todo o histórico?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Sim',
+          onPress: async () => {
+            await AsyncStorage.removeItem('historico');
+            setHistorico([]);
+          },
+        },
+      ]
+    );
+  };
+
   return (
-    <View style={styles.container}>
-      <TouchableOpacity onPress={() => router.back()} style={styles.voltarBtn}>
-        <Image source={require('../assets/Voltar.png')} style={styles.voltarImg} />
-      </TouchableOpacity>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.voltarBtn}>
+          <Image source={require('../assets/Voltar.png')} style={styles.voltarImg} />
+        </TouchableOpacity>
+        <Text style={styles.titulo}>Histórico de Pesquisas</Text>
+      </View>
 
-      <Text style={styles.titulo}>Histórico de Pesquisas</Text>
-
-      {historico.length === 0 ? (
-        <Text>Nenhuma pesquisa encontrada.</Text>
-      ) : (
-        <FlatList
-          data={historico}
-          keyExtractor={(_, index) => index.toString()}
-          renderItem={renderItem}
-          contentContainerStyle={{ gap: 10 }}
-        />
-      )}
+      <ScrollView contentContainerStyle={styles.container}>
+        <View style={styles.content}>
+          {historico.length === 0 ? (
+            <Text style={styles.vazio}>Nenhuma pesquisa realizada ainda.</Text>
+          ) : (
+            historico.map((item, index) => (
+              <TouchableOpacity
+                key={index}
+                style={styles.item}
+                onPress={() => handleSelecionarPalavra(item.palavra, item.idioma)}
+              >
+                <Text style={styles.palavra}>{item.palavra}</Text>
+                <Text style={styles.idioma}>Idioma: {item.idioma}</Text>
+              </TouchableOpacity>
+            ))
+          )}
+        </View>
+      </ScrollView>
 
       {historico.length > 0 && (
-        <TouchableOpacity style={styles.limparBtn} onPress={handleLimpar}>
-          <Text style={styles.limparText}>Limpar Histórico</Text>
-        </TouchableOpacity>
+        <View style={styles.footer}>
+          <TouchableOpacity style={styles.botaoLimpar} onPress={limparHistorico}>
+            <Text style={styles.textoBotaoLimpar}>🗑 Limpar Histórico</Text>
+          </TouchableOpacity>
+        </View>
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
     backgroundColor: '#dce6ea',
-    padding: 20,
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginBottom: 10,
   },
   voltarBtn: {
     width: 32,
     height: 32,
-    marginBottom: 10,
+    marginRight: 10,
   },
   voltarImg: {
     width: 32,
@@ -101,32 +121,69 @@ const styles = StyleSheet.create({
     resizeMode: 'contain',
   },
   titulo: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: 'bold',
-    marginBottom: 20,
+    flex: 1,
+    textAlign: 'left',
+  },
+  container: {
+    backgroundColor: '#dce6ea',
+    paddingHorizontal: 20,
+    paddingBottom: 100, // espaço para o botão fixo
+    flexGrow: 1,
+    alignItems: 'center',
+  },
+  content: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  vazio: {
+    fontSize: 16,
+    color: '#555',
+    textAlign: 'center',
+    marginTop: 40,
   },
   item: {
-    backgroundColor: '#fff4cc',
-    borderRadius: 10,
+    backgroundColor: '#fff',
+    borderRadius: 12,
     padding: 12,
+    marginBottom: 12,
+    width: '100%',
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 2,
   },
   palavra: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
+    textAlign: 'center',
   },
   idioma: {
     fontSize: 14,
-    color: '#555',
+    color: '#666',
+    textAlign: 'center',
   },
-  limparBtn: {
-    marginTop: 20,
-    alignSelf: 'center',
-    padding: 10,
-    backgroundColor: '#ff6961',
-    borderRadius: 8,
+  footer: {
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    right: 20,
+    alignItems: 'center',
   },
-  limparText: {
-    color: 'white',
+  botaoLimpar: {
+    backgroundColor: '#ff4444',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  textoBotaoLimpar: {
+    color: '#fff',
     fontWeight: 'bold',
+    fontSize: 16,
   },
 });
